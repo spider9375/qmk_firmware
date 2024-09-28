@@ -46,25 +46,77 @@ enum layers {
 #define ___NUMBERS3___ _______, _______, _______, _______, _______, _______, _______, KC_COMMA, KC_DOT, KC_SLSH
 #define ___NUMBERS4___ _______, _______, _______, _______, _______, _______
 
-#define ___NUKE1___ _______, _______, _______, _______, _______, _______, _______, _______, _______, _______
+#define ___NUKE1___ _______, _______, _______, _______, _______, KC_VOLU, _______, _______, _______, _______
 #define ___NUKE2___ QK_UNDERGLOW_MODE_NEXT, QK_UNDERGLOW_SATURATION_UP, QK_UNDERGLOW_VALUE_UP, _______, _______, KC_MPRV, KC_MNXT, KC_MPLY, _______, _______
-#define ___NUKE3___ QK_UNDERGLOW_MODE_PREVIOUS, QK_UNDERGLOW_SATURATION_DOWN, QK_UNDERGLOW_VALUE_DOWN, _______, _______, _______, _______, _______, _______, _______
+#define ___NUKE3___ QK_UNDERGLOW_MODE_PREVIOUS, QK_UNDERGLOW_SATURATION_DOWN, QK_UNDERGLOW_VALUE_DOWN, _______, _______, KC_VOLD, _______, _______, _______, _______
 #define ___NUKE4___ _______, _______, _______, _______, _______, _______
 
 #define LAYOUT_spider9375_3x6(...) LAYOUT_split_3x6_3(__VA_ARGS__)
 // clang-format on
 
+enum custom_keycodes {
+    CTRL_CMD = SAFE_RANGE,
+    TOGGLE_OS,
+};
+
+typedef union {
+    uint8_t raw;
+    struct {
+        bool is_mac_os: 1;
+    };
+} user_config_t;
+
+user_config_t user_config;
+
+bool process_record_user(uint16_t keycode, keyrecord_t *record) {
+    switch (keycode) {
+        case CTRL_CMD:
+            if (record->event.pressed) {
+                if (user_config.is_mac_os) {
+                    register_code(KC_LGUI);
+                } else {
+                    register_code(KC_LCTL);
+                }
+            } else {
+                if (user_config.is_mac_os) {
+                    unregister_code(KC_LGUI);
+                } else {
+                    unregister_code(KC_LCTL);
+                }
+            }
+            return false;
+        case TOGGLE_OS:
+            if (record->event.pressed) {
+                user_config.is_mac_os = !user_config.is_mac_os;
+                eeconfig_update_user(user_config.raw);
+            }
+            return false;
+        default:
+            return true;
+    }
+}
+
+void keyboard_post_init_user(void) {
+    user_config.raw = eeconfig_read_user();
+}
+
+void eeconfig_init_user(void) {
+  user_config.raw = 0;
+  user_config.is_mac_os = false;
+  eeconfig_update_user(user_config.raw);
+}
+
 const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
     [_BASE] = LAYOUT_spider9375_3x6(
        KC_TAB, ___BASE1___, KC_BSPC,
-       KC_LCTL, ___BASE2___, KC_ENTER,
+       CTRL_CMD, ___BASE2___, KC_ENTER,
        KC_LSFT, ___BASE3___, XXXXXXX,
                   ___BASE4___
 
   ),
     [_LOWER] = LAYOUT_spider9375_3x6(
-      KC_TAB, ___LOWER1___, KC_BSPC,
-      KC_LCTL, ___LOWER2___, KC_ENTER,
+      KC_ESC, ___LOWER1___, KC_BSPC,
+      CTRL_CMD, ___LOWER2___, KC_ENTER,
       KC_LSFT, ___LOWER3___, XXXXXXX,
                  ___LOWER4___
  ),
@@ -83,7 +135,7 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
     [_NUKE] = LAYOUT_spider9375_3x6(
       QK_BOOT, ___NUKE1___,  KC_BSPC,
       QK_UNDERGLOW_TOGGLE, ___NUKE2___, KC_ENTER,
-      _______, ___NUKE3___,  _______,
+      TOGGLE_OS, ___NUKE3___,  _______,
                   ___NUKE4___
 )
 };
